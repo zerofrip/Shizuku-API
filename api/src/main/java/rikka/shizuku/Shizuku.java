@@ -47,6 +47,21 @@ public class Shizuku {
     private static boolean preV11 = false;
     private static boolean binderReady = false;
 
+    static {
+        // system_shizuku: Direct connection to system service
+        try {
+            android.os.IBinder b = (android.os.IBinder) Class.forName("android.os.ServiceManager")
+                    .getMethod("getService", String.class)
+                    .invoke(null, "shizuku");
+            if (b != null) {
+                onBinderReceived(b, "system_shizuku_v1");
+                binderReady = true;
+            }
+        } catch (Exception e) {
+            Log.e("Shizuku", "Failed to connect to system shizuku service", e);
+        }
+    }
+
     private static final IShizukuApplication SHIZUKU_APPLICATION = new IShizukuApplication.Stub() {
 
         @Override
@@ -56,7 +71,8 @@ public class Shizuku {
             serverPatchVersion = data.getInt(BIND_APPLICATION_SERVER_PATCH_VERSION, -1);
             serverContext = data.getString(BIND_APPLICATION_SERVER_SECONTEXT);
             permissionGranted = data.getBoolean(BIND_APPLICATION_PERMISSION_GRANTED, false);
-            shouldShowRequestPermissionRationale = data.getBoolean(BIND_APPLICATION_SHOULD_SHOW_REQUEST_PERMISSION_RATIONALE, false);
+            shouldShowRequestPermissionRationale = data
+                    .getBoolean(BIND_APPLICATION_SHOULD_SHOW_REQUEST_PERMISSION_RATIONALE, false);
 
             scheduleBinderReceivedListeners();
         }
@@ -64,11 +80,13 @@ public class Shizuku {
         @Override
         public void dispatchRequestPermissionResult(int requestCode, Bundle data) {
             boolean allowed = data.getBoolean(REQUEST_PERMISSION_REPLY_ALLOWED, false);
-            scheduleRequestPermissionResultListener(requestCode, allowed ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED);
+            scheduleRequestPermissionResultListener(requestCode,
+                    allowed ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED);
         }
 
         @Override
-        public void showPermissionConfirmation(int requestUid, int requestPid, String requestPackageName, int requestCode) {
+        public void showPermissionConfirmation(int requestUid, int requestPid, String requestPackageName,
+                int requestCode) {
             // non-app
         }
     };
@@ -92,7 +110,7 @@ public class Shizuku {
             data.writeStrongBinder(SHIZUKU_APPLICATION.asBinder());
             data.writeInt(1);
             args.writeToParcel(data, 0);
-            result = binder.transact(18 /*IShizukuService.Stub.TRANSACTION_attachApplication*/, data, reply, 0);
+            result = binder.transact(18 /* IShizukuService.Stub.TRANSACTION_attachApplication */, data, reply, 0);
             reply.readException();
         } finally {
             reply.recycle();
@@ -111,7 +129,7 @@ public class Shizuku {
             data.writeInterfaceToken("moe.shizuku.server.IShizukuService");
             data.writeStrongBinder(SHIZUKU_APPLICATION.asBinder());
             data.writeString(packageName);
-            result = binder.transact(14 /*IShizukuService.Stub.TRANSACTION_attachApplication*/, data, reply, 0);
+            result = binder.transact(14 /* IShizukuService.Stub.TRANSACTION_attachApplication */, data, reply, 0);
             reply.readException();
         } finally {
             reply.recycle();
@@ -123,7 +141,8 @@ public class Shizuku {
 
     @RestrictTo(LIBRARY_GROUP_PREFIX)
     public static void onBinderReceived(@Nullable IBinder newBinder, String packageName) {
-        if (binder == newBinder) return;
+        if (binder == newBinder)
+            return;
 
         if (newBinder == null) {
             binder = null;
@@ -176,8 +195,10 @@ public class Shizuku {
          * Callback for the result from requesting permission.
          *
          * @param requestCode The code passed in {@link #requestPermission(int)}.
-         * @param grantResult The grant result for which is either {@link android.content.pm.PackageManager#PERMISSION_GRANTED}
-         *                    or {@link android.content.pm.PackageManager#PERMISSION_DENIED}.
+         * @param grantResult The grant result for which is either
+         *                    {@link android.content.pm.PackageManager#PERMISSION_GRANTED}
+         *                    or
+         *                    {@link android.content.pm.PackageManager#PERMISSION_DENIED}.
          */
         void onRequestPermissionResult(int requestCode, int grantResult);
     }
@@ -194,8 +215,10 @@ public class Shizuku {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
             ListenerHolder<?> that = (ListenerHolder<?>) o;
             return Objects.equals(listener, that.listener) && Objects.equals(handler, that.handler);
         }
@@ -217,10 +240,13 @@ public class Shizuku {
      * Shizuku APIs can only be used when the binder is received, or a
      * {@link IllegalStateException} will be thrown.
      *
-     * <p>Note:</p>
+     * <p>
+     * Note:
+     * </p>
      * <ul>
      * <li>The listener will be called in main thread.</li>
-     * <li>The listener could be called multiply times. For example, user restarts Shizuku when app is running.</li>
+     * <li>The listener could be called multiply times. For example, user restarts
+     * Shizuku when app is running.</li>
      * </ul>
      * <p>
      *
@@ -236,21 +262,27 @@ public class Shizuku {
      * Shizuku APIs can only be used when the binder is received, or a
      * {@link IllegalStateException} will be thrown.
      *
-     * <p>Note:</p>
+     * <p>
+     * Note:
+     * </p>
      * <ul>
-     * <li>The listener could be called multiply times. For example, user restarts Shizuku when app is running.</li>
+     * <li>The listener could be called multiply times. For example, user restarts
+     * Shizuku when app is running.</li>
      * </ul>
      * <p>
      *
      * @param listener OnBinderReceivedListener
-     * @param handler  Where the listener would be called. If null, the listener will be called in main thread.
+     * @param handler  Where the listener would be called. If null, the listener
+     *                 will be called in main thread.
      */
-    public static void addBinderReceivedListener(@NonNull OnBinderReceivedListener listener, @Nullable Handler handler) {
+    public static void addBinderReceivedListener(@NonNull OnBinderReceivedListener listener,
+            @Nullable Handler handler) {
         addBinderReceivedListener(Objects.requireNonNull(listener), false, handler);
     }
 
     /**
-     * Same to {@link #addBinderReceivedListener(OnBinderReceivedListener)} but only call the listener
+     * Same to {@link #addBinderReceivedListener(OnBinderReceivedListener)} but only
+     * call the listener
      * immediately if the binder is already received.
      *
      * @param listener OnBinderReceivedListener
@@ -260,17 +292,21 @@ public class Shizuku {
     }
 
     /**
-     * Same to {@link #addBinderReceivedListener(OnBinderReceivedListener)} but only call the listener
+     * Same to {@link #addBinderReceivedListener(OnBinderReceivedListener)} but only
+     * call the listener
      * immediately if the binder is already received.
      *
      * @param listener OnBinderReceivedListener
-     * @param handler  Where the listener would be called. If null, the listener will be called in main thread.
+     * @param handler  Where the listener would be called. If null, the listener
+     *                 will be called in main thread.
      */
-    public static void addBinderReceivedListenerSticky(@NonNull OnBinderReceivedListener listener, @Nullable Handler handler) {
+    public static void addBinderReceivedListenerSticky(@NonNull OnBinderReceivedListener listener,
+            @Nullable Handler handler) {
         addBinderReceivedListener(Objects.requireNonNull(listener), true, handler);
     }
 
-    private static void addBinderReceivedListener(@NonNull OnBinderReceivedListener listener, boolean sticky, @Nullable Handler handler) {
+    private static void addBinderReceivedListener(@NonNull OnBinderReceivedListener listener, boolean sticky,
+            @Nullable Handler handler) {
         if (sticky && binderReady) {
             if (handler != null) {
                 handler.post(listener::onBinderReceived);
@@ -286,7 +322,8 @@ public class Shizuku {
     }
 
     /**
-     * Remove the listener added by {@link #addBinderReceivedListener(OnBinderReceivedListener)}
+     * Remove the listener added by
+     * {@link #addBinderReceivedListener(OnBinderReceivedListener)}
      * or {@link #addBinderReceivedListenerSticky(OnBinderReceivedListener)}.
      *
      * @param listener OnBinderReceivedListener
@@ -317,7 +354,9 @@ public class Shizuku {
 
     /**
      * Add a listener that will be called when binder is dead.
-     * <p>Note:</p>
+     * <p>
+     * Note:
+     * </p>
      * <ul>
      * <li>The listener will be called in main thread.</li>
      * </ul>
@@ -333,7 +372,8 @@ public class Shizuku {
      * Add a listener that will be called when binder is dead.
      *
      * @param listener OnBinderReceivedListener
-     * @param handler  Where the listener would be called. If null, the listener will be called in main thread.
+     * @param handler  Where the listener would be called. If null, the listener
+     *                 will be called in main thread.
      */
     public static void addBinderDeadListener(@NonNull OnBinderDeadListener listener, @Nullable Handler handler) {
         synchronized (RECEIVED_LISTENERS) {
@@ -342,7 +382,8 @@ public class Shizuku {
     }
 
     /**
-     * Remove the listener added by {@link #addBinderDeadListener(OnBinderDeadListener)}.
+     * Remove the listener added by
+     * {@link #addBinderDeadListener(OnBinderDeadListener)}.
      *
      * @param listener OnBinderDeadListener
      * @return If the listener is removed.
@@ -372,7 +413,9 @@ public class Shizuku {
 
     /**
      * Add a listener to receive the result of {@link #requestPermission(int)}.
-     * <p>Note:</p>
+     * <p>
+     * Note:
+     * </p>
      * <ul>
      * <li>The listener will be called in main thread.</li>
      * </ul>
@@ -388,16 +431,19 @@ public class Shizuku {
      * Add a listener to receive the result of {@link #requestPermission(int)}.
      *
      * @param listener OnBinderReceivedListener
-     * @param handler  Where the listener would be called. If null, the listener will be called in main thread.
+     * @param handler  Where the listener would be called. If null, the listener
+     *                 will be called in main thread.
      */
-    public static void addRequestPermissionResultListener(@NonNull OnRequestPermissionResultListener listener, @Nullable Handler handler) {
+    public static void addRequestPermissionResultListener(@NonNull OnRequestPermissionResultListener listener,
+            @Nullable Handler handler) {
         synchronized (RECEIVED_LISTENERS) {
             PERMISSION_LISTENERS.add(new ListenerHolder<>(listener, handler));
         }
     }
 
     /**
-     * Remove the listener added by {@link #addRequestPermissionResultListener(OnRequestPermissionResultListener)}.
+     * Remove the listener added by
+     * {@link #addRequestPermissionResultListener(OnRequestPermissionResultListener)}.
      *
      * @param listener OnRequestPermissionResultListener
      * @return If the listener is removed.
@@ -475,20 +521,30 @@ public class Shizuku {
     }
 
     /**
-     * Start a new process at remote service, parameters are passed to {@link Runtime#exec(String, String[], java.io.File)}.
-     * <br>From version 11, like "su", the process will be killed when the caller process is dead. If you have complicated
-     * requirements, use {@link Shizuku#bindUserService(UserServiceArgs, ServiceConnection)}.
+     * Start a new process at remote service, parameters are passed to
+     * {@link Runtime#exec(String, String[], java.io.File)}.
+     * <br>
+     * From version 11, like "su", the process will be killed when the caller
+     * process is dead. If you have complicated
+     * requirements, use
+     * {@link Shizuku#bindUserService(UserServiceArgs, ServiceConnection)}.
      * <p>
-     * Note, you may need to read/write streams from RemoteProcess in different threads.
+     * Note, you may need to read/write streams from RemoteProcess in different
+     * threads.
      * </p>
      *
      * @return RemoteProcess holds the binder of remote process
-     * @deprecated This method should only be used when you are transitioning from "su".
-     * Use {@link Shizuku#transactRemote(Parcel, Parcel, int)} for binder calls and {@link Shizuku#bindUserService(UserServiceArgs, ServiceConnection)}
-     * for complicated requirements.
-     * <p>This method is planned to be removed from Shizuku API 14.
+     * @deprecated This method should only be used when you are transitioning from
+     *             "su".
+     *             Use {@link Shizuku#transactRemote(Parcel, Parcel, int)} for
+     *             binder calls and
+     *             {@link Shizuku#bindUserService(UserServiceArgs, ServiceConnection)}
+     *             for complicated requirements.
+     *             <p>
+     *             This method is planned to be removed from Shizuku API 14.
      */
-    private static ShizukuRemoteProcess newProcess(@NonNull String[] cmd, @Nullable String[] env, @Nullable String dir) {
+    private static ShizukuRemoteProcess newProcess(@NonNull String[] cmd, @Nullable String[] env,
+            @Nullable String dir) {
         try {
             return new ShizukuRemoteProcess(requireService().newProcess(cmd, env, dir));
         } catch (RemoteException e) {
@@ -503,7 +559,8 @@ public class Shizuku {
      * @throws IllegalStateException if called before binder is received
      */
     public static int getUid() {
-        if (serverUid != -1) return serverUid;
+        if (serverUid != -1)
+            return serverUid;
         try {
             serverUid = requireService().getUid();
         } catch (RemoteException e) {
@@ -521,7 +578,8 @@ public class Shizuku {
      * @return server version
      */
     public static int getVersion() {
-        if (serverApiVersion != -1) return serverApiVersion;
+        if (serverApiVersion != -1)
+            return serverApiVersion;
         try {
             serverApiVersion = requireService().getVersion();
         } catch (RemoteException e) {
@@ -555,16 +613,21 @@ public class Shizuku {
     /**
      * Returns SELinux context of Shizuku server process.
      *
-     * <p>For adb, context should always be <code>u:r:shell:s0</code>.
-     * <br>For root, context depends on su the user uses. E.g., context of Magisk is <code>u:r:magisk:s0</code>.
-     * If the user's su does not allow binder calls between su and app, Shizuku will switch to context <code>u:r:shell:s0</code>.
+     * <p>
+     * For adb, context should always be <code>u:r:shell:s0</code>.
+     * <br>
+     * For root, context depends on su the user uses. E.g., context of Magisk is
+     * <code>u:r:magisk:s0</code>.
+     * If the user's su does not allow binder calls between su and app, Shizuku will
+     * switch to context <code>u:r:shell:s0</code>.
      * </p>
      *
      * @return SELinux context
      * @since Added from version 6
      */
     public static String getSELinuxContext() {
-        if (serverContext != null) return serverContext;
+        if (serverContext != null)
+            return serverContext;
         try {
             serverContext = requireService().getSELinuxContext();
         } catch (RemoteException e) {
@@ -592,9 +655,15 @@ public class Shizuku {
 
         /**
          * Daemon controls if the service should be run as daemon mode.
-         * <br>Under non-daemon mode, the service will be stopped when the app process is dead.
-         * <br>Under daemon mode, the service will run forever until {@link Shizuku#unbindUserService(UserServiceArgs, ServiceConnection, boolean)} is called.
-         * <p>For upward compatibility reason, {@code daemon} is {@code true} by default.
+         * <br>
+         * Under non-daemon mode, the service will be stopped when the app process is
+         * dead.
+         * <br>
+         * Under daemon mode, the service will run forever until
+         * {@link Shizuku#unbindUserService(UserServiceArgs, ServiceConnection, boolean)}
+         * is called.
+         * <p>
+         * For upward compatibility reason, {@code daemon} is {@code true} by default.
          *
          * @param daemon Daemon
          */
@@ -605,8 +674,12 @@ public class Shizuku {
 
         /**
          * Tag is used to distinguish different services.
-         * <p>If you want to obfuscate the user service class, you need to set a stable tag.
-         * <p>By default, user service is shared by the same packages installed in all users.
+         * <p>
+         * If you want to obfuscate the user service class, you need to set a stable
+         * tag.
+         * <p>
+         * By default, user service is shared by the same packages installed in all
+         * users.
          *
          * @param tag Tag
          */
@@ -617,7 +690,8 @@ public class Shizuku {
 
         /**
          * Version code is used to distinguish different services.
-         * <p>Use a different version code when the service code is updated, so that
+         * <p>
+         * Use a different version code when the service code is updated, so that
          * the Shizuku or Sui server can recreate the user service for you.
          *
          * @param versionCode Version code
@@ -628,7 +702,8 @@ public class Shizuku {
         }
 
         /**
-         * Set if the service is debuggable. The process can be found when "Show all processes" is enabled.
+         * Set if the service is debuggable. The process can be found when "Show all
+         * processes" is enabled.
          *
          * @param debuggable Debuggable
          */
@@ -638,7 +713,8 @@ public class Shizuku {
         }
 
         /**
-         * Set if the name suffix of the user service process. The final process name will like
+         * Set if the name suffix of the user service process. The final process name
+         * will like
          * <code>com.example:suffix</code>.
          *
          * @param processNameSuffix Name suffix
@@ -650,11 +726,20 @@ public class Shizuku {
 
         /**
          * Set if the 32-bits app_process should be used on 64-bits devices.
-         * <p>This method will not work on 64-bits only devices.
-         * <p>You should NEVER use this method unless if you have special requirements.
-         * <p><strong>Reasons:</strong>
-         * <p><a href="https://developer.android.com/distribute/best-practices/develop/64-bit">Google has required since August 2019 that all apps submitted to Google Play are 64-bit.</a>
-         * <p><a href="https://www.arm.com/blogs/blueprint/64-bit">ARM announced that all Arm Cortex-A CPU mobile cores will be 64-bit only from 2023.</a>
+         * <p>
+         * This method will not work on 64-bits only devices.
+         * <p>
+         * You should NEVER use this method unless if you have special requirements.
+         * <p>
+         * <strong>Reasons:</strong>
+         * <p>
+         * <a href=
+         * "https://developer.android.com/distribute/best-practices/develop/64-bit">Google
+         * has required since August 2019 that all apps submitted to Google Play are
+         * 64-bit.</a>
+         * <p>
+         * <a href="https://www.arm.com/blogs/blueprint/64-bit">ARM announced that all
+         * Arm Cortex-A CPU mobile cores will be 64-bit only from 2023.</a>
          *
          * @param use32BitAppProcess Use 32bit app_process
          */
@@ -690,7 +775,9 @@ public class Shizuku {
     }
 
     /**
-     * User Service is similar to <a href="https://developer.android.com/guide/components/bound-services">Bound Services</a>.
+     * User Service is similar to
+     * <a href="https://developer.android.com/guide/components/bound-services">Bound
+     * Services</a>.
      * The difference is that the service runs in a different process and as
      * the identity (Linux UID) of root (UID 0) or shell (UID 2000, if the
      * backend is Shizuku and user starts Shizuku with adb).
@@ -721,7 +808,8 @@ public class Shizuku {
      * out how things works, so that you will be able to implement your service
      * safely and elegantly.
      * <p>
-     * Be aware that, to let the UserService to use the latest code, "Run/Debug congfigurations" -
+     * Be aware that, to let the UserService to use the latest code, "Run/Debug
+     * congfigurations" -
      * "Always install with package manager" in Android Studio should be checked.
      *
      * @see UserServiceArgs
@@ -738,11 +826,13 @@ public class Shizuku {
     }
 
     /**
-     * Similar to {@link Shizuku#bindUserService(UserServiceArgs, ServiceConnection)},
+     * Similar to
+     * {@link Shizuku#bindUserService(UserServiceArgs, ServiceConnection)},
      * but does not start user service if it is not running.
      *
-     * @return service version if the service is running, -1 if the service is not running.
-     * For Shizuku pre-v13, version is always 0 if service is running.
+     * @return service version if the service is running, -1 if the service is not
+     *         running.
+     *         For Shizuku pre-v13, version is always 0 if service is running.
      * @see Shizuku#bindUserService(UserServiceArgs, ServiceConnection)
      * @since Added from version 12
      */
@@ -780,7 +870,8 @@ public class Shizuku {
      * @param remove Remove (kill) the remote user service.
      * @see Shizuku#bindUserService(UserServiceArgs, ServiceConnection)
      */
-    public static void unbindUserService(@NonNull UserServiceArgs args, @Nullable ServiceConnection conn, boolean remove) {
+    public static void unbindUserService(@NonNull UserServiceArgs args, @Nullable ServiceConnection conn,
+            boolean remove) {
         if (remove) {
             try {
                 requireService().removeUserService(null /* (unused) */, args.forRemove(true));
@@ -789,19 +880,26 @@ public class Shizuku {
             }
         } else {
             /*
-             * When unbindUserService remove=false is called, although the ShizukuServiceConnection
-             * instance is removed from ShizukuServiceConnections, it still exists (since its a Binder),
-             * and it will still receive "connected" "died" from the service, and then call the callback
+             * When unbindUserService remove=false is called, although the
+             * ShizukuServiceConnection
+             * instance is removed from ShizukuServiceConnections, it still exists (since
+             * its a Binder),
+             * and it will still receive "connected" "died" from the service, and then call
+             * the callback
              * of its ServiceConnection connections[].
-             * This finally leads to the ServiceConnection#onServiceConnected/onServiceDisconnected being
-             * called multiple times after bindUserService is called later, which is not expected.
+             * This finally leads to the
+             * ServiceConnection#onServiceConnected/onServiceDisconnected being
+             * called multiple times after bindUserService is called later, which is not
+             * expected.
              */
 
             ShizukuServiceConnection connection = ShizukuServiceConnections.get(args);
 
             /*
-             * For newer versions of the server, we can just call removeUserService with remove=false.
-             * This will not kill the service, but will remove the ShizukuServiceConnection instance
+             * For newer versions of the server, we can just call removeUserService with
+             * remove=false.
+             * This will not kill the service, but will remove the ShizukuServiceConnection
+             * instance
              * from the server.
              */
             if (Shizuku.getVersion() >= 14 || Shizuku.getVersion() == 13 && Shizuku.getServerPatchVersion() >= 4) {
@@ -813,7 +911,8 @@ public class Shizuku {
             }
 
             /*
-             * As a solution for older versions of the server, we can clear the connections[] here.
+             * As a solution for older versions of the server, we can clear the
+             * connections[] here.
              */
             connection.clearConnections();
             ShizukuServiceConnections.remove(connection);
@@ -827,7 +926,8 @@ public class Shizuku {
      * @return PackageManager.PERMISSION_DENIED or PackageManager.PERMISSION_GRANTED
      */
     public static int checkRemotePermission(String permission) {
-        if (serverUid == 0) return PackageManager.PERMISSION_GRANTED;
+        if (serverUid == 0)
+            return PackageManager.PERMISSION_GRANTED;
         try {
             return requireService().checkPermission(permission);
         } catch (RemoteException e) {
@@ -842,7 +942,8 @@ public class Shizuku {
      * the result.
      *
      * @param requestCode Application specific request code to match with a result
-     *                    reported to {@link OnRequestPermissionResultListener#onRequestPermissionResult(int, int)}.
+     *                    reported to
+     *                    {@link OnRequestPermissionResultListener#onRequestPermissionResult(int, int)}.
      * @see #addRequestPermissionResultListener(OnRequestPermissionResultListener)
      * @see #removeRequestPermissionResultListener(OnRequestPermissionResultListener)
      * @since Added from version 11
@@ -859,11 +960,12 @@ public class Shizuku {
      * Check if self has permission.
      *
      * @return Either {@link android.content.pm.PackageManager#PERMISSION_GRANTED}
-     * or {@link android.content.pm.PackageManager#PERMISSION_DENIED}.
+     *         or {@link android.content.pm.PackageManager#PERMISSION_DENIED}.
      * @since Added from version 11
      */
     public static int checkSelfPermission() {
-        if (permissionGranted) return PackageManager.PERMISSION_GRANTED;
+        if (permissionGranted)
+            return PackageManager.PERMISSION_GRANTED;
         try {
             permissionGranted = requireService().checkSelfPermission();
         } catch (RemoteException e) {
@@ -878,8 +980,10 @@ public class Shizuku {
      * @since Added from version 11
      */
     public static boolean shouldShowRequestPermissionRationale() {
-        if (permissionGranted) return false;
-        if (shouldShowRequestPermissionRationale) return true;
+        if (permissionGranted)
+            return false;
+        if (shouldShowRequestPermissionRationale)
+            return true;
         try {
             shouldShowRequestPermissionRationale = requireService().shouldShowRequestPermissionRationale();
         } catch (RemoteException e) {
@@ -909,7 +1013,8 @@ public class Shizuku {
     }
 
     @RestrictTo(LIBRARY_GROUP_PREFIX)
-    public static void dispatchPermissionConfirmationResult(int requestUid, int requestPid, int requestCode, @NonNull Bundle data) {
+    public static void dispatchPermissionConfirmationResult(int requestUid, int requestPid, int requestCode,
+            @NonNull Bundle data) {
         try {
             requireService().dispatchPermissionConfirmationResult(requestUid, requestPid, requestCode, data);
         } catch (RemoteException e) {
