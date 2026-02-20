@@ -51,14 +51,16 @@ public class Shizuku {
         // system_shizuku: Direct connection to system service
         try {
             android.os.IBinder b = (android.os.IBinder) Class.forName("android.os.ServiceManager")
-                    .getMethod("getService", String.class)
-                    .invoke(null, "shizuku");
+                    .getMethod("getService", String.class).invoke(null, "shizuku");
             if (b != null) {
-                onBinderReceived(b, "system_shizuku_v1");
+                // Dynamic discovery of the package name
+                String packageName = (String) Class.forName("android.app.ActivityThread")
+                        .getMethod("currentPackageName").invoke(null);
+                onBinderReceived(b, packageName);
                 binderReady = true;
             }
         } catch (Exception e) {
-            Log.e("Shizuku", "Failed to connect to system shizuku service", e);
+            Log.e("Shizuku", "Direct system connection failed", e);
         }
     }
 
